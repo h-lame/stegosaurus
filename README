@@ -6,4 +6,17 @@ would be cooler.  Alas, Jurassic Park style shenanigans
 are out of the scope of mere software, but we'll see what
 we can do with the idea in the interim.
 
+Usage
+=====
+
+Uh, well...
+
+irb> require 'lib/waves'
+irb> w = Waves.mono
+irb> w.make_from('README')
+
+Then go play README.wav in your favourite sound tool.  Yeah
+a larger file would totally be more interesting.  But would
+it be as secret?
+
 (c) Murray Steele, MIT License.
