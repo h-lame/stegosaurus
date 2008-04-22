@@ -97,12 +97,12 @@ class Waves
 
     def wave_file_name_from(file_name)
       wave_file_name = "%s.wav" % file_name
-      unless File.exists?(wave_file_name)
-        (1..99).each do |i|
+      if File.exists?(wave_file_name)
+        (1..999).each do |i|
           wave_file_name = "%s%03d.wav" % [file_name, i] 
           return wave_file_name unless File.exists?(wave_file_name)
         end
-        raise "Too many wav files already for this file :(" if i > 999
+        raise "Too many wav files already for this file :(  Seriously, that's weird though."
       else
         wave_file_name
       end
