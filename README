@@ -19,4 +19,13 @@ Then go play README.wav in your favourite sound tool.  Yeah
 a larger file would totally be more interesting.  But would
 it be as secret?
 
+Or...
+
+irb> require 'lib/bumps'
+irb> b = Bumps.new
+irb> b.make_from('README')
+
+Then go look at README.bmp with a seeing device.  Mmm, isn't
+that pretty?
+
 (c) Murray Steele, MIT License.
