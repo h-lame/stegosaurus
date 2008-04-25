@@ -28,4 +28,21 @@ irb> b.make_from('README')
 Then go look at README.bmp with a seeing device.  Mmm, isn't
 that pretty?
 
+Even...
+
+irb> require 'lib/midriffs'
+irb> m = Midriffs.new
+irb> m.make_from('README')
+
+Then go play README.mid with your sound tool.  Yeah, it's empty
+perhaps a larger file would do something.  Like generate a 12 hour
+song with mostly no notes in it?  Yeah, nothings perfect.  What
+do you want, a tool to hide data, or a tool to transform it?
+Well?  WELL?
+
+Oh, yeah, no-one's reading this.
+
+Sorry.
+
+
 (c) Murray Steele, MIT License.
