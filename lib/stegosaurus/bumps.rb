@@ -137,18 +137,25 @@ module Stegosaurus
           image_header += [2**bit_count,0].pack('V2')
         end
     
-        if @bit_count == 24
-          colour_table = nil
-        else
-          colourtable = colour_table
-        end
+        colour_table = if @bit_count == 24
+                         nil
+                       else
+                         get_colour_table
+                       end
         [file_header, image_header, colour_table]
       end
 
       def write_bump_header(bump_file, file_header, image_header, colour_table)
         bump_file.write(file_header)
         bump_file.write(image_header)
-        bump_file.write(data_header) unless colour_table.nil?        
+        bump_file.write(colour_table) unless colour_table.nil?        
+      end
+
+      def get_colour_table
+        # I'm not super sure how exactly we do this.  I think we might want to use
+        # the file data for this, which means we should do nothing here, but 
+        # change the calculations of stuff to take it into account.
+        nil
       end
 
       def write_bump_data(bump_file, data_file, pixels, final_pixel_pad_bytes, dimensions, pad_pixels, line_pad_bytes)
