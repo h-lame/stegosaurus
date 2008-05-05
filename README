@@ -11,8 +11,8 @@ Usage
 
 Uh, well...
 
-irb> require 'lib/stegosaurus/waves'
-irb> w = Stegosaurus::Waves.mono
+irb> require 'lib/stegosaurus'
+irb> w = Stegosaurus.waves(:mono)
 irb> w.make_from('README')
 
 Then go play README.wav in your favourite sound tool.  Yeah
@@ -21,8 +21,8 @@ it be as secret?
 
 Or...
 
-irb> require 'lib/stegosaurus/bumps'
-irb> b = Stegosaurus::Bumps.new
+irb> require 'lib/stegosaurus'
+irb> b = Stegosaurus.bumps
 irb> b.make_from('README')
 
 Then go look at README.bmp with a seeing device.  Mmm, isn't
@@ -30,8 +30,8 @@ that pretty?
 
 Even...
 
-irb> require 'lib/stegosaurus/midriffs'
-irb> m = Stegosaurus::Midriffs.new
+irb> require 'lib/stegosaurus'
+irb> m = Stegosaurus.midriffs
 irb> m.make_from('README')
 
 Then go play README.mid with your sound tool.  Yeah, it's empty
