@@ -11,7 +11,7 @@ Usage
 
 Uh, well...
 
-irb> require 'lib/waves'
+irb> require 'lib/stegosaurus/waves'
 irb> w = Waves.mono
 irb> w.make_from('README')
 
@@ -21,7 +21,7 @@ it be as secret?
 
 Or...
 
-irb> require 'lib/bumps'
+irb> require 'lib/stegosaurus/bumps'
 irb> b = Bumps.new
 irb> b.make_from('README')
 
@@ -30,7 +30,7 @@ that pretty?
 
 Even...
 
-irb> require 'lib/midriffs'
+irb> require 'lib/stegosaurus/midriffs'
 irb> m = Midriffs.new
 irb> m.make_from('README')
 
