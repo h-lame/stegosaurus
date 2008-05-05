@@ -81,13 +81,16 @@ module Stegosaurus
     def make_from(file_name)
       file_name = File.expand_path(file_name)
       if File.exists?(file_name)
-        midriff_header = make_midriff_header(file_name)
-        midriff_file_name = genus_file_name_from(file_name, 'mid')
-        write_midriff_file(midriff_file_name, midriff_header, file_name)
+        file_header, track_header = make_midriff_header(file_name)
+        write_genus_file(file_name, file_header, track_header)
       end
     end
   
     protected
+      def genus_extension
+        'mid'
+      end
+    
       def time_division_as_data
         (@ticks_per_frame | (@frames_per_second << 8) | (1 << 15))
       end
@@ -100,23 +103,6 @@ module Stegosaurus
         track_header << [File.size(file_name)].pack('N')
       
         [file_header, track_header]
-      end
-
-      def write_midriff_file(midriff_file_name, header, data_file_name)
-        file_header, track_header = header
-        File.open(midriff_file_name, 'w+b') do |midriff|
-          midriff.write(file_header)
-          midriff.write(track_header)
-          midriff.flush()
-        
-          File.open(data_file_name, 'rb') do |data|
-            while (d = data.read @buffer_size)
-              d = check_data_for_sysevent(d)
-              midriff.write d
-            end
-          end
-          midriff.flush
-        end
       end
     
       def check_data_for_sysevent(data)
@@ -132,5 +118,8 @@ module Stegosaurus
         end
         fixed
       end
+      # filter_data is what genus.rb will use, but check_Data_for_sysevent is more
+      # meaningful for us, so we'll alias it  
+      alias_method :filter_data, :check_data_for_sysevent
   end
 end

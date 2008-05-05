@@ -23,7 +23,7 @@
 require 'stegosaurus/genus'
 
 module Stegosaurus
-  class Waves < Genus
+  class Waves < Genus    
     attr_accessor :channels, :sample_rate, :bps
   
     def self.mono()
@@ -45,13 +45,16 @@ module Stegosaurus
     def make_from(file_name)
       file_name = File.expand_path(file_name)
       if File.exists?(file_name)
-        wave_header = make_wave_header(file_name)
-        wave_file_name = genus_file_name_from(file_name, 'wav')
-        write_wave_file(wave_file_name, wave_header, file_name)
+        riff, fmt, data = make_wave_header(file_name)
+        write_genus_file(file_name, riff, fmt, data)
       end
     end
   
     protected
+      def genus_extension
+        'wav'
+      end
+      
       def channels_as_data
         case @channels
         when :mono
@@ -94,23 +97,6 @@ module Stegosaurus
           [riff, fmt, data]
         else
           nil
-        end
-      end
-
-      def write_wave_file(wave_file_name, header, data_file_name)
-        riff, fmt, data_header = header
-        File.open(wave_file_name, 'w+b') do |wave|
-          wave.write riff
-          wave.write fmt
-          wave.write data_header
-          wave.flush
-
-          File.open(data_file_name, 'rb') do |data|
-            while (d = data.read @buffer_size)
-              wave.write d
-            end
-          end
-          wave.flush
         end
       end
   end

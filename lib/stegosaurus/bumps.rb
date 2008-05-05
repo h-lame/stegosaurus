@@ -50,12 +50,21 @@ module Stegosaurus
         line_pad_bits = scan_line_pad(width)
         image_details = [pixels, final_pixel_pad_bits, [width, height], pad_pixels, line_pad_bits]
         bump_header = make_bump_header(image_details)
-        bump_file_name = genus_file_name_from(file_name, 'bmp')
-        write_bump_file(bump_file_name, image_details, bump_header, file_name)
+        write_genus_file(file_name, image_details, bump_header) do |file_part, bump_file, data_file, image_details, bump_header|
+          if file_part == :header
+            write_bump_header(bump_file, *bump_header)
+          elsif file_part == :data
+            write_bump_data(bump_file, data_file, *image_details)
+          end
+        end
       end
     end
   
     protected
+      def genus_extension
+        'bmp'
+      end
+    
       def pixel_count_from(file_name)
         # This function returns the number of pixels that this file 
         #    would create for the current bit_count.
@@ -136,43 +145,38 @@ module Stegosaurus
         [file_header, image_header, colour_table]
       end
 
-      def write_bump_file(bump_file_name, image_details, header, data_file_name)
-        (file_header, image_header, colour_table) = header
-        (pixels, final_pixel_pad_bytes, (width, height), pad_pixels, line_pad_bytes) = image_details
-      
-        File.open(bump_file_name, 'w+b') do |bump_file|
-          bump_file.write(file_header)
-          bump_file.write(image_header)
-          bump_file.write(data_header) unless colour_table.nil?
-          bump_file.flush()
+      def write_bump_header(bump_file, file_header, image_header, colour_table)
+        bump_file.write(file_header)
+        bump_file.write(image_header)
+        bump_file.write(data_header) unless colour_table.nil?        
+      end
+
+      def write_bump_data(bump_file, data_file, pixels, final_pixel_pad_bytes, dimensions, pad_pixels, line_pad_bytes)
+        (width, height) = dimensions
         
-          File.open(data_file_name,"rb") do |data_file|
-            line_pad = [].pack("x%d" % line_pad_bytes)
-            fetch_size = (width * @bit_count) / 8 # I hope this is never a *mung* value due to stupid bit_counts...
-            # write data
-            (data, eof) = bytes_from(data_file, fetch_size)
-            while not eof
-              bump_file.write(data)
-              bump_file.write(line_pad)
-              (data, eof) = bytes_from(data_file, fetch_size)
-            end
-            bump_file.write(data)
-            bump_file.write([].pack("x%d" % final_pixel_pad_bytes))
-            bump_file.flush()
-      
-            #write final padding - I'm pretty sure this *could* go mung for a bit_count of less than a byte
-            pad_data_row = pad_pixels % width
-            data_row = [].pack("x%d" % pad_data_row) + line_pad
-            bump_file.write(data_row)
-            bump_file.flush()
-      
-            pad_rows = pad_pixels / width
-            pad_row = [].pack("x%d" % ((width * @bit_count) / 8)) + line_pad
-            pad_rows.times do
-              bump_file.write(pad_row)
-            end
-            bump_file.flush()
-          end
+        line_pad = [].pack("x%d" % line_pad_bytes)
+        fetch_size = (width * @bit_count) / 8 # I hope this is never a *mung* value due to stupid bit_counts...
+        # write data
+        (data, eof) = bytes_from(data_file, fetch_size)
+        while not eof
+          bump_file.write(data)
+          bump_file.write(line_pad)
+          (data, eof) = bytes_from(data_file, fetch_size)
+        end
+        bump_file.write(data)
+        bump_file.write([].pack("x%d" % final_pixel_pad_bytes))
+        bump_file.flush()
+  
+        #write final padding - I'm pretty sure this *could* go mung for a bit_count of less than a byte
+        pad_data_row = pad_pixels % width
+        data_row = [].pack("x%d" % pad_data_row) + line_pad
+        bump_file.write(data_row)
+        bump_file.flush()
+  
+        pad_rows = pad_pixels / width
+        pad_row = [].pack("x%d" % ((width * @bit_count) / 8)) + line_pad
+        pad_rows.times do
+          bump_file.write(pad_row)
         end
       end
 
