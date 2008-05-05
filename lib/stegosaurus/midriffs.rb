@@ -54,93 +54,95 @@
 #   buffer.compact.pack('C%d' % count)
 # end
 
-class Midriffs
-  attr_accessor :frames_per_second, :ticks_per_frame
+module Stegosaurus
+  class Midriffs
+    attr_accessor :frames_per_second, :ticks_per_frame
   
-  def self.valid_frames_per_second(frames_per_second)
-    fps = frames_per_second.to_i
-    if [24, 25, 29, 30].include? fps
-      fps
-    elsif fps < 24
-      24
-    elsif fps > 30
-      30
-    else
-      25
-    end
-  end
-    
-  def initialize(frames_per_second = 25, ticks_per_frame = 120)
-    @buffer_size = 128
-    @frames_per_second = Midriffs.valid_frames_per_second(frames_per_second || 25)
-    @ticks_per_frame = ticks_per_frame || 120
-  end
-  
-  def make_from(file_name)
-    file_name = File.expand_path(file_name)
-    if File.exists?(file_name)
-      midriff_header = make_midriff_header(file_name)
-      midriff_file_name = midriff_file_name_from(file_name)
-      write_midriff_file(midriff_file_name, midriff_header, file_name)
-    end
-  end
-  
-  protected
-    def time_division_as_data
-      (@ticks_per_frame | (@frames_per_second << 8) | (1 << 15))
-    end
-  
-    def make_midriff_header(file_name)
-      file_header = "MThd"
-      file_header << [6,0,1,time_division_as_data].pack('Nnnn')
-      
-      track_header = "MTrk"
-      track_header << [File.size(file_name)].pack('N')
-      
-      [file_header, track_header]
-    end
-
-    def midriff_file_name_from(file_name)
-      midriff_file_name = "%s.mid" % file_name
-      if File.exists?(midriff_file_name)
-        (1..999).each do |i|
-          midriff_file_name = "%s%03d.mid" % [file_name, i] 
-          return midriff_file_name unless File.exists?(midriff_file_name)
-        end
-        raise "Too many mid files already for this file :(  Seriously, that's weird though."
+    def self.valid_frames_per_second(frames_per_second)
+      fps = frames_per_second.to_i
+      if [24, 25, 29, 30].include? fps
+        fps
+      elsif fps < 24
+        24
+      elsif fps > 30
+        30
       else
-        midriff_file_name
+        25
       end
     end
+    
+    def initialize(frames_per_second = 25, ticks_per_frame = 120)
+      @buffer_size = 128
+      @frames_per_second = Midriffs.valid_frames_per_second(frames_per_second || 25)
+      @ticks_per_frame = ticks_per_frame || 120
+    end
+  
+    def make_from(file_name)
+      file_name = File.expand_path(file_name)
+      if File.exists?(file_name)
+        midriff_header = make_midriff_header(file_name)
+        midriff_file_name = midriff_file_name_from(file_name)
+        write_midriff_file(midriff_file_name, midriff_header, file_name)
+      end
+    end
+  
+    protected
+      def time_division_as_data
+        (@ticks_per_frame | (@frames_per_second << 8) | (1 << 15))
+      end
+  
+      def make_midriff_header(file_name)
+        file_header = "MThd"
+        file_header << [6,0,1,time_division_as_data].pack('Nnnn')
+      
+        track_header = "MTrk"
+        track_header << [File.size(file_name)].pack('N')
+      
+        [file_header, track_header]
+      end
 
-    def write_midriff_file(midriff_file_name, header, data_file_name)
-      file_header, track_header = header
-      File.open(midriff_file_name, 'w+b') do |midriff|
-        midriff.write(file_header)
-        midriff.write(track_header)
-        midriff.flush()
+      def midriff_file_name_from(file_name)
+        midriff_file_name = "%s.mid" % file_name
+        if File.exists?(midriff_file_name)
+          (1..999).each do |i|
+            midriff_file_name = "%s%03d.mid" % [file_name, i] 
+            return midriff_file_name unless File.exists?(midriff_file_name)
+          end
+          raise "Too many mid files already for this file :(  Seriously, that's weird though."
+        else
+          midriff_file_name
+        end
+      end
+
+      def write_midriff_file(midriff_file_name, header, data_file_name)
+        file_header, track_header = header
+        File.open(midriff_file_name, 'w+b') do |midriff|
+          midriff.write(file_header)
+          midriff.write(track_header)
+          midriff.flush()
         
-        File.open(data_file_name, 'rb') do |data|
-          while (d = data.read @buffer_size)
-            d = check_data_for_sysevent(d)
-            midriff.write d
+          File.open(data_file_name, 'rb') do |data|
+            while (d = data.read @buffer_size)
+              d = check_data_for_sysevent(d)
+              midriff.write d
+            end
+          end
+          midriff.flush
+        end
+      end
+    
+      def check_data_for_sysevent(data)
+        fixed = ""
+        data.each_byte do |b|
+          # These bytes could indicate a MIDI event that needs variable length data.
+          # Strip them out, until we can think of a better thing to do.
+          if [0xff, 0xf0, 0xf7].include?(b)
+            fixed << 0x00
+          else
+            fixed << b
           end
         end
-        midriff.flush
+        fixed
       end
-    end
-    
-    def check_data_for_sysevent(data)
-      fixed = ""
-      data.each_byte do |b|
-        # These bytes could indicate a MIDI event that needs variable length data.
-        # Strip them out, until we can think of a better thing to do.
-        if [0xff, 0xf0, 0xf7].include?(b)
-          fixed << 0x00
-        else
-          fixed << b
-        end
-      end
-      fixed
-    end
+  end
 end

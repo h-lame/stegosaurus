@@ -12,7 +12,7 @@ Usage
 Uh, well...
 
 irb> require 'lib/stegosaurus/waves'
-irb> w = Waves.mono
+irb> w = Stegosaurus::Waves.mono
 irb> w.make_from('README')
 
 Then go play README.wav in your favourite sound tool.  Yeah
@@ -22,7 +22,7 @@ it be as secret?
 Or...
 
 irb> require 'lib/stegosaurus/bumps'
-irb> b = Bumps.new
+irb> b = Stegosaurus::Bumps.new
 irb> b.make_from('README')
 
 Then go look at README.bmp with a seeing device.  Mmm, isn't
@@ -31,7 +31,7 @@ that pretty?
 Even...
 
 irb> require 'lib/stegosaurus/midriffs'
-irb> m = Midriffs.new
+irb> m = Stegosaurus::Midriffs.new
 irb> m.make_from('README')
 
 Then go play README.mid with your sound tool.  Yeah, it's empty
