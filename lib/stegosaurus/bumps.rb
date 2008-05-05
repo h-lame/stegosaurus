@@ -38,8 +38,27 @@ module Stegosaurus
   class Bumps < Genus
     attr_accessor :bit_count
   
+    def self.valid_bit_count(bit_count)
+      # bits per pixel: 1,2,4,8,16,24,32
+      # NOTE: 16 & 32 mean a weird colour table, don't use them
+      bc = bit_count.to_i
+      if [1,2,4,8,24].include? bc
+        fps
+      elsif bc < 1
+        1
+      elsif bc == 3
+        4
+      elsif (bc > 4 && bc < 8)
+        8
+      elsif (bc > 8 && bc < 24)
+        24
+      else
+        24
+      end
+    end
+  
     def initialize(bit_count = 8)
-      @bit_count = bit_count || 8
+      @bit_count = Bumps.valid_bit_count(bit_count || 8)
     end
   
     def make_from(file_name)
