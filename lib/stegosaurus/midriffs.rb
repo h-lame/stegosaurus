@@ -53,9 +53,10 @@
 #   count += 1
 #   buffer.compact.pack('C%d' % count)
 # end
+require 'stegosaurus/genus'
 
 module Stegosaurus
-  class Midriffs
+  class Midriffs < Genus
     attr_accessor :frames_per_second, :ticks_per_frame
   
     def self.valid_frames_per_second(frames_per_second)
@@ -81,7 +82,7 @@ module Stegosaurus
       file_name = File.expand_path(file_name)
       if File.exists?(file_name)
         midriff_header = make_midriff_header(file_name)
-        midriff_file_name = midriff_file_name_from(file_name)
+        midriff_file_name = genus_file_name_from(file_name, 'mid')
         write_midriff_file(midriff_file_name, midriff_header, file_name)
       end
     end
@@ -99,19 +100,6 @@ module Stegosaurus
         track_header << [File.size(file_name)].pack('N')
       
         [file_header, track_header]
-      end
-
-      def midriff_file_name_from(file_name)
-        midriff_file_name = "%s.mid" % file_name
-        if File.exists?(midriff_file_name)
-          (1..999).each do |i|
-            midriff_file_name = "%s%03d.mid" % [file_name, i] 
-            return midriff_file_name unless File.exists?(midriff_file_name)
-          end
-          raise "Too many mid files already for this file :(  Seriously, that's weird though."
-        else
-          midriff_file_name
-        end
       end
 
       def write_midriff_file(midriff_file_name, header, data_file_name)

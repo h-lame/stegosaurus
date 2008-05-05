@@ -32,8 +32,10 @@
 
 # TODO: some kinda callback registration so we can know what's happening
 # during the various steps
+require 'stegosaurus/genus'
+
 module Stegosaurus
-  class Bumps
+  class Bumps < Genus
     attr_accessor :bit_count
   
     def initialize(bit_count = 8)
@@ -48,7 +50,7 @@ module Stegosaurus
         line_pad_bits = scan_line_pad(width)
         image_details = [pixels, final_pixel_pad_bits, [width, height], pad_pixels, line_pad_bits]
         bump_header = make_bump_header(image_details)
-        bump_file_name = bump_file_name_from(file_name)
+        bump_file_name = genus_file_name_from(file_name, 'bmp')
         write_bump_file(bump_file_name, image_details, bump_header, file_name)
       end
     end
@@ -132,19 +134,6 @@ module Stegosaurus
           colourtable = colour_table
         end
         [file_header, image_header, colour_table]
-      end
-
-      def bump_file_name_from(file_name)
-        bump_file_name = "%s.bmp" % file_name
-        if File.exists?(bump_file_name)
-          (1..999).each do |i|
-            bump_file_name = "%s%03d.bmp" % [file_name, i] 
-            return bump_file_name unless File.exists?(bump_file_name)
-          end
-          raise "Too many bmp files already for this file :(  Seriously, that's weird though."
-        else
-          bump_file_name
-        end
       end
 
       def write_bump_file(bump_file_name, image_details, header, data_file_name)

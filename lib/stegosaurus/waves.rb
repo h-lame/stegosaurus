@@ -20,9 +20,10 @@
 # TODO: some kinda callback registration so we can know what's happening
 # during the various steps
 # 
+require 'stegosaurus/genus'
 
 module Stegosaurus
-  class Waves
+  class Waves < Genus
     attr_accessor :channels, :sample_rate, :bps
   
     def self.mono()
@@ -45,7 +46,7 @@ module Stegosaurus
       file_name = File.expand_path(file_name)
       if File.exists?(file_name)
         wave_header = make_wave_header(file_name)
-        wave_file_name = wave_file_name_from(file_name)
+        wave_file_name = genus_file_name_from(file_name, 'wav')
         write_wave_file(wave_file_name, wave_header, file_name)
       end
     end
@@ -93,19 +94,6 @@ module Stegosaurus
           [riff, fmt, data]
         else
           nil
-        end
-      end
-
-      def wave_file_name_from(file_name)
-        wave_file_name = "%s.wav" % file_name
-        if File.exists?(wave_file_name)
-          (1..999).each do |i|
-            wave_file_name = "%s%03d.wav" % [file_name, i] 
-            return wave_file_name unless File.exists?(wave_file_name)
-          end
-          raise "Too many wav files already for this file :(  Seriously, that's weird though."
-        else
-          wave_file_name
         end
       end
 
