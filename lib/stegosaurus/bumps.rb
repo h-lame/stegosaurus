@@ -29,6 +29,8 @@
 # Scan Lines must be multiples of 4-bytes, so we may have to pad with 
 # 0,1,2 or 3 null bytes for each line in the file.
 # Scan Line = WIDTH * BITCOUNT
+# NOTE - data rows are back to front - e.g. first row of data is bottom
+# row of picture.
 
 # TODO: some kinda callback registration so we can know what's happening
 # during the various steps
@@ -64,10 +66,10 @@ module Stegosaurus
     def make_from(file_name)
       file_name = File.expand_path(file_name)
       if File.exists?(file_name)
-        (pixels, final_pixel_pad_bits) = pixel_count_from(file_name)
+        (pixels, final_pixel_pad_bytes) = pixel_count_from(file_name)
         ((width, height), pad_pixels) = width_and_height_from_pixels(pixels)
         line_pad_bits = scan_line_pad(width)
-        image_details = [pixels, final_pixel_pad_bits, [width, height], pad_pixels, line_pad_bits]
+        image_details = [pixels, final_pixel_pad_bytes, [width, height], pad_pixels, line_pad_bits]
         bump_header = make_bump_header(image_details)
         write_genus_file(file_name, image_details, bump_header) do |file_part, bump_file, data_file, image_details, bump_header|
           if file_part == :header
@@ -86,24 +88,36 @@ module Stegosaurus
     
       def pixel_count_from(file_name)
         # This function returns the number of pixels that this file 
-        #    would create for the current bit_count.
-        #    The return value is a tuple of two items:
-        #        1. the pixel count
-        #        2. the number of pad bits that need to be added to the
-        #           end of the files data to complete the final pixel.
+        # would create for the current bit_count.
+        # The return value is a tuple of two items:
+        #   1. the pixel count
+        #   2. the number of pad bytes that need to be added to the
+        #      end of the files data to complete the final pixel.
+        # Note, it's only really a problem if the bit_count is either not
+        # a multiple of 8 (which we don't allow) or > 8 (which we only allow
+        # in the guise of 24).
         if File.exists?(file_name)
           file_size = File.size(file_name)
           file_size_in_bits = file_size * 8
+          # NOTE - the divide is ok, we deal with fractions with a modulo if needed
           real_pixels = (file_size_in_bits / @bit_count)
-          pad_for_final_pixel = (file_size_in_bits % @bit_count)
-          if pad_for_final_pixel == 0
-            [real_pixels, 0]
+          if @bit_count == 24
+            pad_for_final_pixel = (file_size_in_bits % 24)
+            if pad_for_final_pixel == 0
+              [real_pixels, 0]
+            else
+              # NOTE - again, this divide is ok as we shouldn't ever get non-factor-of-8
+              # values.
+              [real_pixels + 1, (@bit_count - pad_for_final_pixel) / 8]
+            end
           else
-            [real_pixels + 1, (@bit_count - pad_for_final_pixel) / 8]
+            # NOTE - again, this divide is ok as we @bit_count is already a factor of
+            # 8, which we used to generate file_size_in_bits above.
+            [real_pixels, 0]
           end
         end
       end
- 
+       
       def width_and_height_from_pixels(pixels)
         # This function returns the width and height of the image given the 
         # supplied number of pixels.
@@ -130,17 +144,22 @@ module Stegosaurus
       end
 
       def scan_line_pad(width)
-        (32 - ((width * @bit_count) % 32))/8
+        spare = ((width * @bit_count) % 32)
+        if spare == 0
+          spare
+        else
+          (32 - spare) / 8
+        end
       end
 
       def make_bump_header(img_details)
-        (pixels, final_pixel_pad_bytes, (width, height), pad_pixles, line_pad_bytes) = img_details
+        (pixels, final_pixel_pad_bytes, (width, height), pad_pixels, line_pad_bytes) = img_details
                 
         bump_size = 54 # header
         bump_size += colour_table_size # color table
         offset = bump_size
         image_size = (((width * @bit_count) / 8) + line_pad_bytes) * height # pixel data
-        bump_size += image_size 
+        bump_size += image_size
     
         file_header = "BM"
         file_header += [bump_size, 0, 0, offset].pack("Vv2V")
@@ -167,7 +186,11 @@ module Stegosaurus
       def write_bump_header(bump_file, file_header, image_header, colour_table)
         bump_file.write(file_header)
         bump_file.write(image_header)
-        bump_file.write(colour_table.flatten) unless colour_table.nil?    
+        unless colour_table.nil?
+          colours = colour_table.flatten
+          bump_file.write(colours.pack('c%d' % colours.size))
+        end
+        bump_file.flush()
       end
 
       def get_colour_table
@@ -197,6 +220,7 @@ module Stegosaurus
             rows
           end)
           grid[7][31] = [0xff,0xff,0xff,0x00] # white, not the 0xfc,0xfc,0xff off-white the above will generate
+          grid
         when 24
           nil
         end
