@@ -43,7 +43,7 @@ module Stegosaurus
       # NOTE: 16 & 32 mean a weird colour table, don't use them
       bc = bit_count.to_i
       if [1,2,4,8,24].include? bc
-        fps
+        bc
       elsif bc < 1
         1
       elsif bc == 3
@@ -167,14 +167,39 @@ module Stegosaurus
       def write_bump_header(bump_file, file_header, image_header, colour_table)
         bump_file.write(file_header)
         bump_file.write(image_header)
-        bump_file.write(colour_table) unless colour_table.nil?        
+        bump_file.write(colour_table.flatten) unless colour_table.nil?    
       end
 
       def get_colour_table
         # I'm not super sure how exactly we do this.  I think we might want to use
         # the file data for this, which means we should do nothing here, but 
         # change the calculations of stuff to take it into account.
-        nil
+        case @bit_count
+        when 1
+          [[0x00,0x00,0x00,0x00], [0xFF,0xFF,0xFF,0x00]] #black and white
+        when 2
+          [[0x00,0x00,0x00,0x00], [0xFF,0xFF,0xFF,0x00],
+           [0x00,0x00,0xFF,0x00], [0xFF,0x00,0x00,0x00]] #black, white, red, blue
+        when 4 # standard windows 16-bit colours... CGA?
+          [[0x00,0x00,0x00,0x00], [0x00,0x00,0x80,0x00], [0x00,0x80,0x00,0x00], [0x00,0x80,0x80,0x00],
+           [0x80,0x00,0x00,0x00], [0x80,0x00,0x80,0x00], [0x80,0x80,0x00,0x00], [0xC0,0xC0,0xC0,0x00],
+           [0x80,0x80,0x80,0x00], [0x00,0x00,0xFF,0x00], [0x00,0xFF,0x00,0x00], [0x00,0xFF,0xFF,0x00],
+           [0xFF,0x00,0x00,0x00], [0xFF,0x00,0xFF,0x00], [0xFF,0xFF,0x00,0x00], [0xFF,0xFF,0xFF,0x00]]
+        when 8
+          grid = ((0..7).inject([]) do |rows, row_num|
+            row = ((0..7).inject([]) do |row, chunk_num|
+              (0..3).inject(row) do |row_again, cell_in_chunk_num|
+                row_again << [(0+(36*chunk_num)), (0+(36*row_num)), (0+(85*cell_in_chunk_num)), 0x00]
+                row_again
+              end
+            end)
+            rows << row
+            rows
+          end)
+          grid[7][31] = [0xff,0xff,0xff,0x00] # white, not the 0xfc,0xfc,0xff off-white the above will generate
+        when 24
+          nil
+        end
       end
 
       def write_bump_data(bump_file, data_file, pixels, final_pixel_pad_bytes, dimensions, pad_pixels, line_pad_bytes)
