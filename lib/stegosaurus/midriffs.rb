@@ -34,25 +34,6 @@
 # DELTA_TIME        variable-length
 # EVENT
 
-
-# Might be useful if we ever want to write delta-time events,
-# rather than just append the data to the end of the file.
-#
-# def write_var_len(value)
-#   buffer = [nil,nil,nil,nil]
-#
-#   count = 0
-#
-#   while value >= 128
-#     this_bit = ((value & 0x7f) | 0x80)
-#     buffer[count] = this_bit
-#     count += 1
-#     value = value >> 7
-#   end
-#   buffer[count] = value
-#   count += 1
-#   buffer.compact.pack('C%d' % count)
-# end
 require 'stegosaurus/genus'
 
 module Stegosaurus
@@ -89,6 +70,19 @@ module Stegosaurus
     protected
       def genus_extension
         'mid'
+      end
+
+      def convert_to_variable_length_quantity(value)
+        return [0] if value.zero?
+
+        buf = []
+
+        buf << (value & 0x7f)
+        while (value >>= 7) > 0
+          buf << ((value & 0x7f) | 0x80)
+        end
+
+        buf.reverse
       end
 
       def time_division_as_data
