@@ -62,8 +62,22 @@ module Stegosaurus
     def make_from(file_name)
       file_name = File.expand_path(file_name)
       if File.exists?(file_name)
-        file_header, track_header = make_midriff_header(file_name)
-        write_genus_file(file_name, file_header, track_header)
+        Tempfile.create(file_name) do |track_file|
+          with_data_file(file_name) do |data_file|
+            read_from_data_and_write_to_genus(data_file, track_file)
+          end
+          track_file.flush
+          track_file.seek(0)
+          file_header, track_header = make_midriff_header(track_file.path)
+          write_genus_file(file_name) do |file_part, genus_file, data_file|
+            if file_part == :header
+              genus_file.write file_header
+              genus_file.write track_header
+            elsif file_part == :data
+              write_raw_data_to_genus(track_file, genus_file)
+            end
+          end
+        end
       end
     end
 
