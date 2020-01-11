@@ -54,7 +54,7 @@ module Stegosaurus
     end
 
     def initialize(frames_per_second = 25, ticks_per_frame = 120)
-      @buffer_size = 128
+      @buffer_size = 216
       @frames_per_second = Midriffs.valid_frames_per_second(frames_per_second || 25)
       @ticks_per_frame = ticks_per_frame || 120
     end
@@ -98,22 +98,36 @@ module Stegosaurus
 
         [file_header, track_header]
       end
-    
-      def check_data_for_sysevent(data)
-        fixed = ""
-        data.each_byte do |b|
-          # These bytes could indicate a MIDI event that needs variable length data.
-          # Strip them out, until we can think of a better thing to do.
-          if [0xff, 0xf0, 0xf7].include?(b)
-            fixed << 0x00
-          else
-            fixed << b
+
+      def write_midi_events(data)
+        # read 27 bytes (pad with 0x0 to get to 27 bytes)
+        # split into 8 x 27 bit chunks
+        # write each chunk as
+        # delta-time-of(xxxxxxxx) 100xxxxx 0xxxxxxx 0xxxxxxx
+
+        fixed = []
+        data.each_byte.each_slice(27) do |data|
+          padded = data + ([0x0] * (27 - data.size))
+          bits = padded.map { |x| "%08b" % x }.join.each_char.to_a
+
+          8.times do
+            delta_time = bits.shift(8).join
+            on_or_off = bits.shift
+            channel = bits.shift(4).join
+            note = bits.shift(7).join
+            velocity = bits.shift(7).join
+
+            fixed += convert_to_variable_length_quantity(Integer("0b#{delta_time}"))
+            fixed << Integer("0b100#{on_or_off}#{channel}")
+            fixed << Integer("0b0#{note}")
+            fixed << Integer("0b0#{velocity}")
           end
         end
-        fixed
+
+        fixed.pack('C*')
       end
-      # filter_data is what genus.rb will use, but check_Data_for_sysevent is more
-      # meaningful for us, so we'll alias it  
-      alias_method :filter_data, :check_data_for_sysevent
+      # filter_data is what genus.rb will use, but write_midi_events is
+      # more meaningful for us, so we'll alias it
+      alias_method :filter_data, :write_midi_events
   end
 end
