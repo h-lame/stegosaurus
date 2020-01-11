@@ -13,7 +13,7 @@ module Stegosaurus
       end
     end
   end
-  
+
   protected
     def self.fossilize(genus, args)
       species = args.first

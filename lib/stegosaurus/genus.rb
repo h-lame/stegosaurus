@@ -1,16 +1,16 @@
 module Stegosaurus
   class Genus
     attr_accessor :buffer_size
-    
+
     def initialize
       @buffer_size = 128
     end
-    
+
     def genus_file_name_from(file_name, a_genus_extension = nil)
       genus_file_name = "%s.%s" % [file_name, a_genus_extension || genus_extension]
       if File.exists?(genus_file_name)
         (1..999).each do |i|
-          genus_file_name = "%s%03d.%s" % [file_name, i, genus_extension] 
+          genus_file_name = "%s%03d.%s" % [file_name, i, genus_extension]
           return genus_file_name unless File.exists?(genus_file_name)
         end
         raise "Too many #{genus_extension} files already for this file :(  Seriously, that's weird though, what are you doing?"
@@ -50,6 +50,6 @@ module Stegosaurus
       end
       genus_file_name
     end
-    
+
   end
 end
