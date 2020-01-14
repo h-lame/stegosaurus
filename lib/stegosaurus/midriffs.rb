@@ -35,6 +35,7 @@
 # EVENT
 
 require 'stegosaurus/genus'
+require 'tempfile'
 
 module Stegosaurus
   class Midriffs < Genus
