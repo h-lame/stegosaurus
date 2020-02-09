@@ -1,23 +1,23 @@
 # FILE hdr + IMAGE hdr + COLOR table + PIXEL data
-# -- FILE hdr -- 
+# -- FILE hdr --
 # TYPE          2bytes = "BM"
-# SIZE          4bytes = 14 + 40 + colortable + pixel data
-# RESERVED_1    2bytes = 0
-# RESERVED_2    2bytes = 0
-# PIXEL_OFFSET  4bytes = offest to start of pixel data
+# SIZE          4bytes = 14 + 40 + colortable + pixel data (unsigned)
+# RESERVED_1    2bytes = 0 (unsigned)
+# RESERVED_2    2bytes = 0 (unsigned)
+# PIXEL_OFFSET  4bytes = offest to start of pixel data (unsigned)
 # -- IMAGE chunk --
-# SIZE          4bytes = 40
-# WIDTH         4bytes = width of image
-# HEIGHT        4bytes = height of image
-# PLANES        2bytes = 1
-# BITCOUNT      2bytes = bits per pixel: 1,2,4,8,16,24,32
+# SIZE          4bytes = 40 (unsigned)
+# WIDTH         4bytes = width of image (signed)
+# HEIGHT        4bytes = height of image (signed)
+# PLANES        2bytes = 1 (unsigned)
+# BITCOUNT      2bytes = bits per pixel: 1,2,4,8,16,24,32 (unsigned)
 #                        NOTE: 16 & 32 mean a weird colour table, don't use them
-# COMPRESSION   4bytes = compression type: 0
-# SIZEIMAGE     4bytes = image size: 0 for uncompressed
-# X_RESOLUTION  4bytes = preferred pixels per meter (X)
-# Y_RESOLUTION  4bytes = preferred pixels per meter (Y)
-# COLOURS_USED  4bytes = number of used colours (0 for 24bit)
-# COLOURS_IMP   4bytes = number of important colours (0 for 24bit)
+# COMPRESSION   4bytes = compression type: 0 (unsigned)
+# SIZEIMAGE     4bytes = image size: 0 for uncompressed (unsigned)
+# X_RESOLUTION  4bytes = preferred pixels per meter (X) (signed)
+# Y_RESOLUTION  4bytes = preferred pixels per meter (Y) (signed)
+# COLOURS_USED  4bytes = number of used colours (0 for 24bit) (unsigned)
+# COLOURS_IMP   4bytes = number of important colours (0 for 24bit) (unsigned)
 # -- COLOR table --
 # Repeat the following for each colour (e.g. BITCOUNT of 8 = 256 colours)
 # Blue          1byte = red value
@@ -26,7 +26,7 @@
 # Unused        1byte = 0
 # -- PIXEL data --
 # Data          .....
-# Scan Lines must be multiples of 4-bytes, so we may have to pad with 
+# Scan Lines must be multiples of 4-bytes, so we may have to pad with
 # 0,1,2 or 3 null bytes for each line in the file.
 # Scan Line = WIDTH * BITCOUNT
 # NOTE - data rows are back to front - e.g. first row of data is bottom
@@ -39,7 +39,7 @@ require 'stegosaurus/genus'
 module Stegosaurus
   class Bumps < Genus
     attr_accessor :bit_count
-  
+
     def self.valid_bit_count(bit_count)
       # bits per pixel: 1,2,4,8,16,24,32
       # NOTE: 16 & 32 mean a weird colour table, don't use them
@@ -58,11 +58,11 @@ module Stegosaurus
         24
       end
     end
-  
+
     def initialize(bit_count = 8)
       @bit_count = Bumps.valid_bit_count(bit_count || 8)
     end
-  
+
     def make_from(file_name)
       file_name = File.expand_path(file_name)
       if File.exists?(file_name)
@@ -80,14 +80,14 @@ module Stegosaurus
         end
       end
     end
-  
+
     protected
       def genus_extension
         'bmp'
       end
-    
+
       def pixel_count_from(file_name)
-        # This function returns the number of pixels that this file 
+        # This function returns the number of pixels that this file
         # would create for the current bit_count.
         # The return value is a tuple of two items:
         #   1. the pixel count
@@ -117,13 +117,13 @@ module Stegosaurus
           end
         end
       end
-       
+
       def width_and_height_from_pixels(pixels)
-        # This function returns the width and height of the image given the 
+        # This function returns the width and height of the image given the
         # supplied number of pixels.
         # The return value is a 2 part tuple:
         #     1.  A tuple of (Width, Height) in pixels.
-        #     2.  The number of pad pixels that have to be added 
+        #     2.  The number of pad pixels that have to be added
         #         to create an image of the returned width and height.
         # The algorithm is to find the square root of the pixel count
         # and if this is not a whole number, we round up and calculate the
@@ -154,27 +154,27 @@ module Stegosaurus
 
       def make_bump_header(img_details)
         (pixels, final_pixel_pad_bytes, (width, height), pad_pixels, line_pad_bytes) = img_details
-                
+
         bump_size = 54 # header
         bump_size += colour_table_size # color table
         offset = bump_size
         image_size = (((width * @bit_count) / 8) + line_pad_bytes) * height # pixel data
         bump_size += image_size
-    
+
         file_header = "BM"
         file_header += [bump_size, 0, 0, offset].pack("Vv2V")
-    
-        image_header = [40, width, height, 1, @bit_count, 0, 0].pack("V3v2V2")
+
+        image_header = [40, width, height, 1, @bit_count, 0, 0].pack("Vl<2v2V2")
         # I can honestly say that whilst I know what these mean, I don't
         # know if these default values can affect the stored data or not
-        image_header += [96, 96].pack('V2') 
+        image_header += [96, 96].pack('l<2')
 
         if @bit_count == 24
           image_header += [0,0].pack('V2')
         else
           image_header += [2**bit_count,0].pack('V2')
         end
-    
+
         colour_table = if @bit_count == 24
                          nil
                        else
@@ -195,7 +195,7 @@ module Stegosaurus
 
       def get_colour_table
         # I'm not super sure how exactly we do this.  I think we might want to use
-        # the file data for this, which means we should do nothing here, but 
+        # the file data for this, which means we should do nothing here, but
         # change the calculations of stuff to take it into account.
         case @bit_count
         when 1
