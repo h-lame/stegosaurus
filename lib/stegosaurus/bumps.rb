@@ -244,11 +244,12 @@ module Stegosaurus
           bump_file.flush()
 
           #write final padding - I'm pretty sure this *could* go mung for a bit_count of less than a byte
-          pad_data_row = pad_pixels % width
-          if pad_data_row > 0
-            data_row = [].pack("x%d" % pad_data_row) + line_pad
-            bump_file.write(data_row)
+          pad_data_row_pixels = pad_pixels % width
+          if pad_data_row_pixels > 0
+            last_row_from_data_padding = [].pack("x%d" % ((pad_data_row_pixels * @bit_count) / 8))
+            bump_file.write(last_row_from_data_padding)
           end
+          bump_file.write(line_pad)
           bump_file.flush()
         end
 
