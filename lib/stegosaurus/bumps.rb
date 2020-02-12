@@ -228,7 +228,6 @@ module Stegosaurus
 
       def write_bump_data(bump_file, data_file, pixels, final_pixel_pad_bytes, dimensions, pad_pixels, line_pad_bytes)
         (width, height) = dimensions
-        
         line_pad = [].pack("x%d" % line_pad_bytes)
         fetch_size = (width * @bit_count) / 8 # I hope this is never a *mung* value due to stupid bit_counts...
         # write data
@@ -238,20 +237,27 @@ module Stegosaurus
           bump_file.write(line_pad)
           (data, eof) = bytes_from(data_file, fetch_size)
         end
-        bump_file.write(data)
-        bump_file.write([].pack("x%d" % final_pixel_pad_bytes))
-        bump_file.flush()
-  
-        #write final padding - I'm pretty sure this *could* go mung for a bit_count of less than a byte
-        pad_data_row = pad_pixels % width
-        data_row = [].pack("x%d" % pad_data_row) + line_pad
-        bump_file.write(data_row)
-        bump_file.flush()
-  
+
+        if data.size > 0
+          bump_file.write(data)
+          bump_file.write([].pack("x%d" % final_pixel_pad_bytes)) if final_pixel_pad_bytes > 0
+          bump_file.flush()
+
+          #write final padding - I'm pretty sure this *could* go mung for a bit_count of less than a byte
+          pad_data_row = pad_pixels % width
+          if pad_data_row > 0
+            data_row = [].pack("x%d" % pad_data_row) + line_pad
+            bump_file.write(data_row)
+          end
+          bump_file.flush()
+        end
+
         pad_rows = pad_pixels / width
-        pad_row = [].pack("x%d" % ((width * @bit_count) / 8)) + line_pad
-        pad_rows.times do
-          bump_file.write(pad_row)
+        if pad_rows > 0
+          pad_row = [].pack("x%d" % ((width * @bit_count) / 8)) + line_pad
+          pad_rows.times do
+            bump_file.write(pad_row)
+          end
         end
       end
 
