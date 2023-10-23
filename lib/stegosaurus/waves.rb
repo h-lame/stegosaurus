@@ -44,7 +44,7 @@ module Stegosaurus
   
     def make_from(file_name)
       file_name = File.expand_path(file_name)
-      if File.exists?(file_name)
+      if File.exist?(file_name)
         riff, fmt, data = make_wave_header(file_name)
         write_genus_file(file_name, riff, fmt, data)
       end
@@ -72,7 +72,7 @@ module Stegosaurus
       end
 
       def make_wave_header(file_name)
-        if File.exists?(file_name)
+        if File.exist?(file_name)
           file_size = File.size(file_name)
           riff = "RIFF"
           # So .. um .. pack('i') = int.  I want little-endian int and (on my computer at least)

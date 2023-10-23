@@ -65,7 +65,7 @@ module Stegosaurus
 
     def make_from(file_name)
       file_name = File.expand_path(file_name)
-      if File.exists?(file_name)
+      if File.exist?(file_name)
         (pixels, final_pixel_pad_bytes) = pixel_count_from(file_name)
         ((width, height), pad_pixels) = width_and_height_from_pixels(pixels)
         line_pad_bits = scan_line_pad(width)
@@ -96,7 +96,7 @@ module Stegosaurus
         # Note, it's only really a problem if the bit_count is either not
         # a multiple of 8 (which we don't allow) or > 8 (which we only allow
         # in the guise of 24).
-        if File.exists?(file_name)
+        if File.exist?(file_name)
           file_size = File.size(file_name)
           file_size_in_bits = file_size * 8
           # NOTE - the divide is ok, we deal with fractions with a modulo if needed

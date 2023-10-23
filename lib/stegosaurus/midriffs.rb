@@ -62,7 +62,7 @@ module Stegosaurus
 
     def make_from(file_name)
       file_name = File.expand_path(file_name)
-      if File.exists?(file_name)
+      if File.exist?(file_name)
         Tempfile.create(file_name) do |track_file|
           with_data_file(file_name) do |data_file|
             read_from_data_and_write_to_genus(data_file, track_file)
