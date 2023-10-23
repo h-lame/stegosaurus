@@ -1,5 +1,5 @@
 # RIFF hdr + FMT chunk + DATA chunk
-# -- RIFF hdr -- 
+# -- RIFF hdr --
 # CHUNKID       4bytes = "RIFF"
 # CHUNKSIZE     4bytes = 36+data size
 # FORMAT        4bytes = "WAVE"
@@ -19,21 +19,21 @@
 
 # TODO: some kinda callback registration so we can know what's happening
 # during the various steps
-# 
+#
 require 'stegosaurus/genus'
 
 module Stegosaurus
-  class Waves < Genus    
+  class Waves < Genus
     attr_accessor :channels, :sample_rate, :bps
-  
+
     def self.mono()
       new(:mono, 22050, 8)
     end
-  
+
     def self.stereo()
       new(:stereo, 22050, 8)
     end
-  
+
     def initialize(channels = :mono, sample_rate = 22050, bps = 8)
       # TODO make sure these values scale to the correct 'shapes'
       @channels = channels || :mono
@@ -41,7 +41,7 @@ module Stegosaurus
       @bps = bps || 8
       @buffer_size = 128
     end
-  
+
     def make_from(file_name)
       file_name = File.expand_path(file_name)
       if File.exist?(file_name)
@@ -49,12 +49,12 @@ module Stegosaurus
         write_genus_file(file_name, riff, fmt, data)
       end
     end
-  
+
     protected
       def genus_extension
         'wav'
       end
-      
+
       def channels_as_data
         case @channels
         when :mono
@@ -65,7 +65,7 @@ module Stegosaurus
           1
         end
       end
-  
+
       def number_of_samples_from(file_name)
         # I dunno, maybe I'll need to pad the file if this is a floaty value?
         (((File.size(file_name) * 8) / channels_as_data.to_f) / @bps.to_f) if File.exists?(file_name)
@@ -74,6 +74,7 @@ module Stegosaurus
       def make_wave_header(file_name)
         if File.exist?(file_name)
           file_size = File.size(file_name)
+
           riff = "RIFF"
           # So .. um .. pack('i') = int.  I want little-endian int and (on my computer at least)
           # 'l' (system endian long), 'N' (network-endian long) and 'i' give the same
