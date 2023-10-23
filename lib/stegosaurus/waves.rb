@@ -44,61 +44,58 @@ module Stegosaurus
 
     def make_from(file_name)
       file_name = File.expand_path(file_name)
-      if File.exist?(file_name)
-        riff, fmt, data = make_wave_header(file_name)
-        write_genus_file(file_name, riff, fmt, data)
+      raise ArgumentError, 'Can\'t make waves from nothing' unless File.exist?(file_name)
+
+      riff, fmt, data = make_wave_header(file_name)
+      write_genus_file(file_name, riff, fmt, data)
+    end
+
+    private
+
+    def genus_extension
+      'wav'
+    end
+
+    def channels_as_data
+      case @channels
+      when :mono
+        1
+      when :stereo
+        2
+      else
+        1
       end
     end
 
-    protected
-      def genus_extension
-        'wav'
-      end
+    def number_of_samples_from(file_size)
+      # I dunno, maybe I'll need to pad the file if this is a floaty value?
+      ((file_size * 8) / channels_as_data.to_f) / @bps.to_f
+    end
 
-      def channels_as_data
-        case @channels
-        when :mono
-          1
-        when :stereo
-          2
-        else
-          1
-        end
-      end
+    def make_wave_header(file_name)
+      file_size = File.size(file_name)
 
-      def number_of_samples_from(file_size)
-        # I dunno, maybe I'll need to pad the file if this is a floaty value?
-        ((file_size * 8) / channels_as_data.to_f) / @bps.to_f
-      end
+      riff = "RIFF"
+      # So .. um .. pack('i') = int.  I want little-endian int and (on my computer at least)
+      # 'l' (system endian long), 'N' (network-endian long) and 'i' give the same
+      # so I'm assuming that 'V' (little-endian long) is ok. (Probably not for other systems)
+      riff << [36 + file_size].pack('V')
+      riff << "WAVE"
 
-      def make_wave_header(file_name)
-        if File.exist?(file_name)
-          file_size = File.size(file_name)
+      fmt = "fmt "
 
-          riff = "RIFF"
-          # So .. um .. pack('i') = int.  I want little-endian int and (on my computer at least)
-          # 'l' (system endian long), 'N' (network-endian long) and 'i' give the same
-          # so I'm assuming that 'V' (little-endian long) is ok. (Probably not for other systems)
-          riff << [36 + file_size].pack('V')
-          riff << "WAVE"
+      number_of_samples = number_of_samples_from(file_size)
 
-          fmt = "fmt "
+      block_align = (channels_as_data * @bps) / 8
+      byte_rate = @sample_rate * block_align
 
-          number_of_samples = number_of_samples_from(file_size)
+      fmt << [16, 1, channels_as_data, @sample_rate, byte_rate, block_align, @bps].pack('Vv2V2v2')
 
-          block_align = (channels_as_data * @bps) / 8
-          byte_rate = @sample_rate * block_align
+      data = 'data'
+      # data << [file_size].pack('V')
+      data << [(number_of_samples * channels_as_data * @bps) / 8].pack('V')
 
-          fmt << [16, 1, channels_as_data, @sample_rate, byte_rate, block_align, @bps].pack('Vv2V2v2')
-
-          data = 'data'
-          # data << [file_size].pack('V')
-          data << [(number_of_samples * channels_as_data * @bps) / 8].pack('V')
-
-          [riff, fmt, data]
-        else
-          nil
-        end
-      end
+      [riff, fmt, data]
+    end
   end
 end

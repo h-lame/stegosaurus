@@ -62,87 +62,89 @@ module Stegosaurus
 
     def make_from(file_name)
       file_name = File.expand_path(file_name)
-      if File.exist?(file_name)
-        Tempfile.create(file_name) do |track_file|
-          with_data_file(file_name) do |data_file|
-            read_from_data_and_write_to_genus(data_file, track_file)
-          end
-          track_file.flush
-          track_file.seek(0)
-          file_header, track_header = make_midriff_header(track_file.path)
-          write_genus_file(file_name) do |file_part, genus_file, data_file|
-            if file_part == :header
-              genus_file.write file_header
-              genus_file.write track_header
-            elsif file_part == :data
-              write_raw_data_to_genus(track_file, genus_file)
-            end
+      raise ArgumentError, 'Can\'t make midriffs from nothing' unless File.exist?(file_name)
+
+      Tempfile.create(file_name) do |track_file|
+        with_data_file(file_name) do |data_file|
+          read_from_data_and_write_to_genus(data_file, track_file)
+        end
+        track_file.flush
+        track_file.seek(0)
+        file_header, track_header = make_midriff_header(track_file.path)
+        write_genus_file(file_name) do |file_part, genus_file, data_file|
+          if file_part == :header
+            genus_file.write file_header
+            genus_file.write track_header
+          elsif file_part == :data
+            write_raw_data_to_genus(track_file, genus_file)
           end
         end
       end
     end
 
-    protected
-      def genus_extension
-        'mid'
+    private
+
+    def genus_extension
+      'mid'
+    end
+
+    def convert_to_variable_length_quantity(value)
+      return [0] if value.zero?
+
+      buf = []
+
+      buf << (value & 0x7f)
+      while (value >>= 7) > 0
+        buf << ((value & 0x7f) | 0x80)
       end
 
-      def convert_to_variable_length_quantity(value)
-        return [0] if value.zero?
+      buf.reverse
+    end
 
-        buf = []
+    def time_division_as_data
+      (@ticks_per_frame | (@frames_per_second << 8) | (1 << 15))
+    end
 
-        buf << (value & 0x7f)
-        while (value >>= 7) > 0
-          buf << ((value & 0x7f) | 0x80)
+    def make_midriff_header(file_name)
+      file_header = "MThd"
+      file_header << [6,0,1,time_division_as_data].pack('Nnnn')
+
+      track_header = "MTrk"
+      track_header << [File.size(file_name)].pack('N')
+
+      [file_header, track_header]
+    end
+
+    def write_midi_events(data)
+      # read 27 bytes (pad with 0x0 to get to 27 bytes)
+      # split into 8 x 27 bit chunks
+      # write each chunk as
+      # delta-time-of(xxxxxxxx) 100xxxxx 0xxxxxxx 0xxxxxxx
+
+      fixed = []
+      data.each_byte.each_slice(27) do |data|
+        padded = data + ([0x0] * (27 - data.size))
+        bits = padded.map { |x| "%08b" % x }.join.each_char.to_a
+
+        8.times do
+          delta_time = bits.shift(8).join
+          on_or_off = bits.shift
+          channel = bits.shift(4).join
+          note = bits.shift(7).join
+          velocity = bits.shift(7).join
+
+          fixed += convert_to_variable_length_quantity(Integer("0b#{delta_time}"))
+          fixed << Integer("0b100#{on_or_off}#{channel}")
+          fixed << Integer("0b0#{note}")
+          fixed << Integer("0b0#{velocity}")
         end
-
-        buf.reverse
       end
 
-      def time_division_as_data
-        (@ticks_per_frame | (@frames_per_second << 8) | (1 << 15))
-      end
+      fixed.pack('C*')
+    end
 
-      def make_midriff_header(file_name)
-        file_header = "MThd"
-        file_header << [6,0,1,time_division_as_data].pack('Nnnn')
-
-        track_header = "MTrk"
-        track_header << [File.size(file_name)].pack('N')
-
-        [file_header, track_header]
-      end
-
-      def write_midi_events(data)
-        # read 27 bytes (pad with 0x0 to get to 27 bytes)
-        # split into 8 x 27 bit chunks
-        # write each chunk as
-        # delta-time-of(xxxxxxxx) 100xxxxx 0xxxxxxx 0xxxxxxx
-
-        fixed = []
-        data.each_byte.each_slice(27) do |data|
-          padded = data + ([0x0] * (27 - data.size))
-          bits = padded.map { |x| "%08b" % x }.join.each_char.to_a
-
-          8.times do
-            delta_time = bits.shift(8).join
-            on_or_off = bits.shift
-            channel = bits.shift(4).join
-            note = bits.shift(7).join
-            velocity = bits.shift(7).join
-
-            fixed += convert_to_variable_length_quantity(Integer("0b#{delta_time}"))
-            fixed << Integer("0b100#{on_or_off}#{channel}")
-            fixed << Integer("0b0#{note}")
-            fixed << Integer("0b0#{velocity}")
-          end
-        end
-
-        fixed.pack('C*')
-      end
-      # filter_data is what genus.rb will use, but write_midi_events is
-      # more meaningful for us, so we'll alias it
-      alias_method :filter_data, :write_midi_events
+    # filter_data is what genus.rb will use, but write_midi_events is
+    # more meaningful for us, so we'll alias it
+    alias_method :filter_data, :write_midi_events
   end
 end
