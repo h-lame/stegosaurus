@@ -66,9 +66,9 @@ module Stegosaurus
         end
       end
 
-      def number_of_samples_from(file_name)
+      def number_of_samples_from(file_size)
         # I dunno, maybe I'll need to pad the file if this is a floaty value?
-        (((File.size(file_name) * 8) / channels_as_data.to_f) / @bps.to_f) if File.exists?(file_name)
+        ((file_size * 8) / channels_as_data.to_f) / @bps.to_f
       end
 
       def make_wave_header(file_name)
@@ -84,7 +84,7 @@ module Stegosaurus
 
           fmt = "fmt "
 
-          number_of_samples = number_of_samples_from(file_name)
+          number_of_samples = number_of_samples_from(file_size)
 
           block_align = (channels_as_data * @bps) / 8
           byte_rate = @sample_rate * block_align
