@@ -14,14 +14,14 @@ module Stegosaurus
     end
   end
 
-  protected
-    def self.fossilize(genus, args)
-      species = args.first
-      if species && species.is_a?(Symbol) && genus.respond_to?(species)
-        args.shift
-        genus.send(species, *args)
-      else
-        genus.send(:new, *args)
-      end
+  def self.fossilize(genus, args)
+    species = args.first
+    if species && species.is_a?(Symbol) && genus.respond_to?(species)
+      args.shift
+      genus.send(species, *args)
+    else
+      genus.send(:new, *args)
     end
+  end
+  private_class_method :fossilize
 end
