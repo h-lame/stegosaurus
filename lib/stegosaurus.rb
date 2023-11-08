@@ -12,6 +12,22 @@ module Stegosaurus
         fossilize(Stegosaurus.const_get(genus.to_s.capitalize),args)
       end
     end
+
+    def ql(path)
+      `qlmanage -p "#{path}"`
+    end
+
+    def open_wave(path)
+      `open -a VLC.app "#{path}"`
+    end
+
+    def open_bump(path)
+      `open -a Acorn.app #{path}`
+    end
+
+    def open_midriff(path)
+      `open -a MIDITrail.app "#{path}"`
+    end
   end
 
   def self.fossilize(genus, args)
