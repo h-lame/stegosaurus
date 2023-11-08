@@ -121,7 +121,7 @@ module Stegosaurus
       # write each chunk as
       # delta-time-of(xxxxxxxx) 100xxxxx 0xxxxxxx 0xxxxxxx
 
-      fixed = []
+      events = []
       data.each_byte.each_slice(27) do |data|
         padded = data + ([0x0] * (27 - data.size))
         bits = padded.map { |x| "%08b" % x }.join.each_char.to_a
@@ -133,16 +133,16 @@ module Stegosaurus
           note = bits.shift(7).join
           velocity = bits.shift(7).join
 
-          fixed += convert_to_variable_length_quantity(Integer("0b#{delta_time}"))
-          fixed << Integer("0b100#{on_or_off}#{channel}")
-          fixed << Integer("0b0#{note}")
-          fixed << Integer("0b0#{velocity}")
+          events += convert_to_variable_length_quantity(Integer("0b#{delta_time}"))
+          events << Integer("0b100#{on_or_off}#{channel}")
+          events << Integer("0b0#{note}")
+          events << Integer("0b0#{velocity}")
         end
       end
 
       end_of_track = [0xFF, 0x2F, 0x00]
 
-      (fixed + end_of_track).pack('C*')
+      (events + end_of_track).pack('C*')
     end
 
     # filter_data is what genus.rb will use, but write_midi_events is
