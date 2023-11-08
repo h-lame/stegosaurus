@@ -54,11 +54,12 @@ module Stegosaurus
       end
     end
 
-    def initialize(frames_per_second = 25, ticks_per_frame = 120, set_instruments_from_data = false)
+    def initialize(frames_per_second = 25, ticks_per_frame = 120, set_instruments_from_data = false, write_end_of_track_marker = false)
       @buffer_size = 216
       @frames_per_second = Midriffs.valid_frames_per_second(frames_per_second || 25)
       @ticks_per_frame = ticks_per_frame || 120
       @set_instruments_from_data = set_instruments_from_data || false
+      @write_end_of_track_marker = write_end_of_track_marker || false
     end
 
     def make_from(file_name)
@@ -69,7 +70,7 @@ module Stegosaurus
         with_data_file(file_name) do |data_file|
           write_instrument_config(data_file, track_file) if @set_instruments_from_data
           read_from_data_and_write_to_genus(data_file, track_file)
-          write_end_of_track_marker(track_file)
+          write_end_of_track_marker(track_file) if @write_end_of_track_marker
         end
         track_file.flush
         track_file.seek(0)
