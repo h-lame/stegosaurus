@@ -67,6 +67,7 @@ module Stegosaurus
       Tempfile.create(file_name) do |track_file|
         with_data_file(file_name) do |data_file|
           read_from_data_and_write_to_genus(data_file, track_file)
+          write_end_of_track_marker(track_file)
         end
         track_file.flush
         track_file.seek(0)
@@ -116,11 +117,11 @@ module Stegosaurus
     end
 
     def write_midi_events(data)
+      # Reminder - this is called _multiple_ times, with @buffer_size chunks of data
       # read 27 bytes (pad with 0x0 to get to 27 bytes)
       # split into 8 x 27 bit chunks
       # write each chunk as
       # delta-time-of(xxxxxxxx) 100xxxxx 0xxxxxxx 0xxxxxxx
-
       events = []
       data.each_byte.each_slice(27) do |data|
         padded = data + ([0x0] * (27 - data.size))
@@ -140,13 +141,15 @@ module Stegosaurus
         end
       end
 
-      end_of_track = [0xFF, 0x2F, 0x00]
-
-      (events + end_of_track).pack('C*')
+      events.pack('C*')
     end
 
     # filter_data is what genus.rb will use, but write_midi_events is
     # more meaningful for us, so we'll alias it
     alias_method :filter_data, :write_midi_events
+
+    def write_end_of_track_marker(track_file)
+      track_file.write [0xFF, 0x2F, 0x00].pack('C*')
+    end
   end
 end
