@@ -54,10 +54,11 @@ module Stegosaurus
       end
     end
 
-    def initialize(frames_per_second = 25, ticks_per_frame = 120)
+    def initialize(frames_per_second = 25, ticks_per_frame = 120, set_instruments_from_data = false)
       @buffer_size = 216
       @frames_per_second = Midriffs.valid_frames_per_second(frames_per_second || 25)
       @ticks_per_frame = ticks_per_frame || 120
+      @set_instruments_from_data = set_instruments_from_data || false
     end
 
     def make_from(file_name)
@@ -66,6 +67,7 @@ module Stegosaurus
 
       Tempfile.create(file_name) do |track_file|
         with_data_file(file_name) do |data_file|
+          write_instrument_config(data_file, track_file) if @set_instruments_from_data
           read_from_data_and_write_to_genus(data_file, track_file)
           write_end_of_track_marker(track_file)
         end
@@ -147,6 +149,52 @@ module Stegosaurus
     # filter_data is what genus.rb will use, but write_midi_events is
     # more meaningful for us, so we'll alias it
     alias_method :filter_data, :write_midi_events
+
+    def write_instrument_config(data_file, track_file)
+      # read 14 bytes and use these to set the instrument on each channel
+      instruments = data_file.read(14).each_byte.take(14)
+      instruments += ([0x0] * (14 - instruments.size))
+      instruments_as_bits = instruments.map { |x| "%08b" % x }.join.each_char.to_a
+
+      # instruments are a byte, but values 0-127, so we need to convert to bits and then read 7-bits at a time to get instrument values
+      instrument_config = instruments_as_bits.each_slice(7).with_index.flat_map do |instrument, index|
+        puts "Channel #{index}, instrument #{instrument.join.to_i(2)}"
+        [
+          0, # delta-time of 0
+          (0xC << 4) | index, # channel
+          instrument.join.to_i(2)
+        ]
+      end
+      puts instrument_config.inspect
+      # instrument_config = []
+      # instruments = [
+      #     1, #  0 - Bright grand piano
+      #    12, #  1 - Vibraphone
+      #    22, #  2 - Accordion
+      #    31, #  3 - Distortion Guitar
+      #    36, #  4 - Fretless Bass
+      #    41, #  5 - Violin
+      #    54, #  6 - Voice Oohs
+      #    61, #  7 - French Horn
+      #    67, #  8 - Tenor Sax
+      #    80, #  9 - Ocarina
+      #        # 10 - percussion - leave as is
+      #    82, # 11 - Lead 2 (sawtooth)
+      #    95, # 12 - Pad 7 (halo)
+      #   102, # 13 - Goblins
+      #   110, # 14 - Bagpipe
+      #   128, # 15 - Gunshot
+      # ]
+      # instrument_config = instruments.each_with_index.flat_map do |instrument, index|
+      #   [
+      #     0, # delta-time of 0
+      #     (0xC << 4) | index, # channel
+      #     instrument # instrument
+      #   ]
+      # end
+
+      track_file.write instrument_config.pack('C*')
+    end
 
     def write_end_of_track_marker(track_file)
       track_file.write [0xFF, 0x2F, 0x00].pack('C*')
