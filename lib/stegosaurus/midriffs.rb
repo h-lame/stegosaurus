@@ -140,7 +140,9 @@ module Stegosaurus
         end
       end
 
-      fixed.pack('C*')
+      end_of_track = [0xFF, 0x2F, 0x00]
+
+      (fixed + end_of_track).pack('C*')
     end
 
     # filter_data is what genus.rb will use, but write_midi_events is
