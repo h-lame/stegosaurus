@@ -111,7 +111,7 @@ module Stegosaurus
           [real_pixels + 1, (@bit_count - pad_for_final_pixel) / 8]
         end
       else
-        # NOTE - again, this divide is ok as we @bit_count is already a factor of
+        # NOTE - again, this divide is ok as @bit_count is already a factor of
         # 8, which we used to generate file_size_in_bits above.
         [real_pixels, 0]
       end
