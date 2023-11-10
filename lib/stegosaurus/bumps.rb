@@ -230,8 +230,30 @@ module Stegosaurus
 
     def write_bump_data(bump_file, data_file, final_pixel_pad_bytes, width, pad_pixels, line_pad_bits)
       bits_needed = width * @bit_count
+      if bits_needed % 8 == 0
+        write_byte_scale_bump_data(bump_file, data_file, final_pixel_pad_bytes, width, pad_pixels, line_pad_bits)
+      else
+        write_bit_scale_bump_data(bump_file, data_file, bits_needed)
+      end
+      bump_file.flush()
+
+      pad_rows = pad_pixels / width
+      if pad_rows > 0
+        width_in_bits = width * @bit_count
+        width_in_bits_to_nearest_32bit_number = ((width_in_bits + 31) / 32) * 32
+        scan_line_width_in_bytes = width_in_bits_to_nearest_32bit_number / 8
+
+        pad_row = [].pack("x%d" % scan_line_width_in_bytes)
+        pad_rows.times do
+          bump_file.write(pad_row)
+        end
+      end
+    end
+
+    def write_byte_scale_bump_data(bump_file, data_file, final_pixel_pad_bytes, width, pad_pixels, line_pad_bits)
       line_pad = [].pack("x%d" % (line_pad_bits / 8))
-      fetch_size = (width * @bit_count) / 8 # I hope this is never a *mung* value due to stupid bit_counts...
+      fetch_size = width
+
       # write data
       (data, eof) = bytes_from(data_file, fetch_size)
       while not eof
@@ -240,28 +262,59 @@ module Stegosaurus
         (data, eof) = bytes_from(data_file, fetch_size)
       end
 
+      # write last row, if it wasn't complete
       if data.size > 0
         bump_file.write(data)
         bump_file.write([].pack("x%d" % final_pixel_pad_bytes)) if final_pixel_pad_bytes > 0
         bump_file.flush()
 
-        #write final padding - I'm pretty sure this *could* go mung for a bit_count of less than a byte
+        # write final padding
         pad_data_row_pixels = pad_pixels % width
         if pad_data_row_pixels > 0
           last_row_from_data_padding = [].pack("x%d" % ((pad_data_row_pixels * @bit_count) / 8))
           bump_file.write(last_row_from_data_padding)
         end
         bump_file.write(line_pad)
-        bump_file.flush()
+      end
+    end
+
+    def write_bit_scale_bump_data(bump_file, data_file, bits_needed)
+      fetch_size = (bits_needed / 8.0).ceil
+      line_pad_bits = 32 - (bits_needed % 32)
+
+      row = []
+      (data, eof) = bytes_from(data_file, fetch_size)
+      # write data
+      while not eof
+        row = write_bit_scale_scan_line(bump_file, data, row, bits_needed, line_pad_bits)
+        (data, eof) = bytes_from(data_file, fetch_size)
       end
 
-      pad_rows = pad_pixels / width
-      if pad_rows > 0
-        pad_row = [].pack("x%d" % ((width * @bit_count) / 8)) + line_pad
-        pad_rows.times do
-          bump_file.write(pad_row)
-        end
+      if data.size > 0
+        # use up last chunk of data from file
+        row = write_bit_scale_scan_line(bump_file, data, row, bits_needed, line_pad_bits)
       end
+
+      if row.size > 0
+        # if we didn't completely use up the last chunk of data from the file
+        # pad and write out the last row
+        write_bit_scale_scan_line(bump_file, '', row, bits_needed, line_pad_bits)
+      end
+    end
+
+    def write_bit_scale_scan_line(bump_file, data, row, bits_needed, line_pad_bits)
+      # turn bytes into bits
+      data_as_bits = data.each_byte.map { |x| "%08b" % x }.join.each_char.to_a
+      # fill up current row with bits we need for a scanline
+      row += data_as_bits.shift(bits_needed - row.size)
+      # pad in case we don't have enough in the row already for the pixels
+      row += [0] * (bits_needed - row.size)
+      # pad the row to scanline scale
+      row += [0] * line_pad_bits
+      # write the row as bytes
+      bump_file.write(row.each_slice(8).map { |x| x.join.to_i(2) }.pack('C*'))
+      # return any remaining data unused after the shift
+      data_as_bits
     end
 
     def bytes_from(data_file, how_many_bytes)
