@@ -69,14 +69,13 @@ module Stegosaurus
 
       (pixels, final_pixel_pad_bytes) = pixel_count_from(file_name)
       ((width, height), pad_pixels) = width_and_height_from_pixels(pixels)
-      line_pad_bits = scan_line_pad(width)
-      image_details = [pixels, final_pixel_pad_bytes, [width, height], pad_pixels, line_pad_bits]
-      bump_header = make_bump_header(image_details)
-      write_genus_file(file_name, image_details, bump_header) do |file_part, bump_file, data_file, image_details, bump_header|
+      line_pad_bits = scan_line_pad_bits(width)
+      bump_header = make_bump_header(width, height)
+      write_genus_file(file_name) do |file_part, bump_file, data_file|
         if file_part == :header
           write_bump_header(bump_file, *bump_header)
         elsif file_part == :data
-          write_bump_data(bump_file, data_file, *image_details)
+          write_bump_data(bump_file, data_file, final_pixel_pad_bytes, width, pad_pixels, line_pad_bits)
         end
       end
     end
@@ -142,18 +141,16 @@ module Stegosaurus
       end
     end
 
-    def scan_line_pad(width)
+    def scan_line_pad_bits(width)
       spare = ((width * @bit_count) % 32)
       if spare == 0
         spare
       else
-        (32 - spare) / 8
+        (32 - spare)
       end
     end
 
-    def make_bump_header(img_details)
-      (pixels, final_pixel_pad_bytes, (width, height), pad_pixels, line_pad_bytes) = img_details
-
+    def make_bump_header(width, height)
       bump_size = 54 # header
       bump_size += colour_table_size # color table
       offset = bump_size
@@ -231,9 +228,9 @@ module Stegosaurus
       end
     end
 
-    def write_bump_data(bump_file, data_file, pixels, final_pixel_pad_bytes, dimensions, pad_pixels, line_pad_bytes)
-      (width, height) = dimensions
-      line_pad = [].pack("x%d" % line_pad_bytes)
+    def write_bump_data(bump_file, data_file, final_pixel_pad_bytes, width, pad_pixels, line_pad_bits)
+      bits_needed = width * @bit_count
+      line_pad = [].pack("x%d" % (line_pad_bits / 8))
       fetch_size = (width * @bit_count) / 8 # I hope this is never a *mung* value due to stupid bit_counts...
       # write data
       (data, eof) = bytes_from(data_file, fetch_size)
