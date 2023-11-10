@@ -40,10 +40,10 @@ module Stegosaurus
   class Bumps < Genus
     attr_accessor :bit_count
 
-    def self.valid_bit_count(bit_count)
+    def self.valid_colour_depth(colour_depth)
       # bits per pixel: 1,2,4,8,16,24,32
       # NOTE: 16 & 32 mean a weird colour table, don't use them
-      bc = bit_count.to_i
+      bc = colour_depth.to_i
       if [1,2,4,8,24].include? bc
         bc
       elsif bc < 1
@@ -59,8 +59,8 @@ module Stegosaurus
       end
     end
 
-    def initialize(bit_count = 8)
-      @bit_count = Bumps.valid_bit_count(bit_count || 8)
+    def initialize(colour_depth = 8)
+      @colour_depth = Bumps.valid_colour_depth(colour_depth || 8)
     end
 
     def make_from(file_name)
@@ -88,29 +88,29 @@ module Stegosaurus
 
     def pixel_count_from(file_name)
       # This function returns the number of pixels that this file
-      # would create for the current bit_count.
+      # would create for the current colour_depth.
       # The return value is a tuple of two items:
       #   1. the pixel count
       #   2. the number of pad bytes that need to be added to the
       #      end of the files data to complete the final pixel.
-      # Note, it's only really a problem if the bit_count is either not
+      # Note, it's only really a problem if the colour_depth is either not
       # a multiple of 8 (which we don't allow) or > 8 (which we only allow
       # in the guise of 24).
       file_size = File.size(file_name)
       file_size_in_bits = file_size * 8
       # NOTE - the divide is ok, we deal with fractions with a modulo if needed
-      real_pixels = (file_size_in_bits / @bit_count)
-      if @bit_count == 24
+      real_pixels = (file_size_in_bits / @colour_depth)
+      if @colour_depth == 24
         pad_for_final_pixel = (file_size_in_bits % 24)
         if pad_for_final_pixel == 0
           [real_pixels, 0]
         else
           # NOTE - again, this divide is ok as we shouldn't ever get non-factor-of-8
           # values.
-          [real_pixels + 1, (@bit_count - pad_for_final_pixel) / 8]
+          [real_pixels + 1, (@colour_depth - pad_for_final_pixel) / 8]
         end
       else
-        # NOTE - again, this divide is ok as @bit_count is already a factor of
+        # NOTE - again, this divide is ok as @colour_depth is already a factor of
         # 8, which we used to generate file_size_in_bits above.
         [real_pixels, 0]
       end
@@ -133,16 +133,16 @@ module Stegosaurus
     end
 
     def colour_table_size
-      if @bit_count == 24
+      if @colour_depth == 24
         0
       else
-        colours = 2 ** @bit_count
+        colours = 2 ** @colour_depth
         colours * 4
       end
     end
 
     def scan_line_pad_bits(width)
-      spare = ((width * @bit_count) % 32)
+      spare = ((width * @colour_depth) % 32)
       if spare == 0
         spare
       else
@@ -157,7 +157,7 @@ module Stegosaurus
 
       # calculate size = scan_line_width * height
       # scan_line_width = width rounded up to nearest 4 byte (32 bit) number
-      width_in_bits = width * @bit_count
+      width_in_bits = width * @colour_depth
       width_in_bits_to_nearest_32bit_number = ((width_in_bits + 31) / 32) * 32
       scan_line_width_in_bytes = width_in_bits_to_nearest_32bit_number / 8
       image_size = scan_line_width_in_bytes * height
@@ -166,18 +166,18 @@ module Stegosaurus
       file_header = "BM"
       file_header += [bump_size, 0, 0, offset].pack("Vv2V")
 
-      image_header = [40, width, height, 1, @bit_count, 0, 0].pack("Vl<2v2V2")
+      image_header = [40, width, height, 1, @colour_depth, 0, 0].pack("Vl<2v2V2")
       # I can honestly say that whilst I know what these mean, I don't
       # know if these default values can affect the stored data or not
       image_header += [96, 96].pack('l<2')
 
-      if @bit_count == 24
+      if @colour_depth == 24
         image_header += [0,0].pack('V2')
       else
-        image_header += [2**bit_count,0].pack('V2')
+        image_header += [2**@colour_depth,0].pack('V2')
       end
 
-      colour_table = if @bit_count == 24
+      colour_table = if @colour_depth == 24
                        nil
                      else
                        get_colour_table
@@ -199,7 +199,7 @@ module Stegosaurus
       # I'm not super sure how exactly we do this.  I think we might want to use
       # the file data for this, which means we should do nothing here, but
       # change the calculations of stuff to take it into account.
-      case @bit_count
+      case @colour_depth
       when 1
         [[0x00,0x00,0x00,0x00], [0xFF,0xFF,0xFF,0x00]] #black and white
       when 2
@@ -229,7 +229,7 @@ module Stegosaurus
     end
 
     def write_bump_data(bump_file, data_file, final_pixel_pad_bytes, width, pad_pixels, line_pad_bits)
-      bits_needed = width * @bit_count
+      bits_needed = width * @colour_depth
       if bits_needed % 8 == 0
         write_byte_scale_bump_data(bump_file, data_file, final_pixel_pad_bytes, width, pad_pixels, line_pad_bits)
       else
@@ -239,7 +239,7 @@ module Stegosaurus
 
       pad_rows = pad_pixels / width
       if pad_rows > 0
-        width_in_bits = width * @bit_count
+        width_in_bits = width * @colour_depth
         width_in_bits_to_nearest_32bit_number = ((width_in_bits + 31) / 32) * 32
         scan_line_width_in_bytes = width_in_bits_to_nearest_32bit_number / 8
 
@@ -271,7 +271,7 @@ module Stegosaurus
         # write final padding
         pad_data_row_pixels = pad_pixels % width
         if pad_data_row_pixels > 0
-          last_row_from_data_padding = [].pack("x%d" % ((pad_data_row_pixels * @bit_count) / 8))
+          last_row_from_data_padding = [].pack("x%d" % ((pad_data_row_pixels * @colour_depth) / 8))
           bump_file.write(last_row_from_data_padding)
         end
         bump_file.write(line_pad)
