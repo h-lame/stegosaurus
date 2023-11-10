@@ -157,7 +157,13 @@ module Stegosaurus
       bump_size = 54 # header
       bump_size += colour_table_size # color table
       offset = bump_size
-      image_size = (((width * @bit_count) / 8) + line_pad_bytes) * height # pixel data
+
+      # calculate size = scan_line_width * height
+      # scan_line_width = width rounded up to nearest 4 byte (32 bit) number
+      width_in_bits = width * @bit_count
+      width_in_bits_to_nearest_32bit_number = ((width_in_bits + 31) / 32) * 32
+      scan_line_width_in_bytes = width_in_bits_to_nearest_32bit_number / 8
+      image_size = scan_line_width_in_bytes * height
       bump_size += image_size
 
       file_header = "BM"
