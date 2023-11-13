@@ -7,12 +7,12 @@ module Stegosaurus
     end
 
     def genus_file_name_from(file_name, a_genus_extension = nil)
-      file_name = file_name.sub(/\A\//,'').gsub(/\//, '-')
+      file_name = File.basename(file_name) #file_name.sub(/\A\//,'').gsub(/\//, '-')
       genus_file_name = "artefacts/%s.%s" % [file_name, a_genus_extension || genus_extension]
 
       if File.exist?(genus_file_name)
         (1..999).each do |i|
-          genus_file_name = "%s%03d.%s" % [file_name, i, genus_extension]
+          genus_file_name = "artefacts/%s%03d.%s" % [file_name, i, genus_extension]
           return genus_file_name unless File.exist?(genus_file_name)
         end
         raise "Too many #{genus_extension} files already for this file :(  Seriously, that's weird though, what are you doing?"
