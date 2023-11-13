@@ -69,13 +69,12 @@ module Stegosaurus
 
       (pixels, final_pixel_pad_bytes) = pixel_count_from(file_name)
       ((width, height), pad_pixels) = width_and_height_from_pixels(pixels)
-      line_pad_bits = scan_line_pad_bits(width)
       bump_header = make_bump_header(width, height)
       write_genus_file(file_name) do |file_part, bump_file, data_file|
         if file_part == :header
           write_bump_header(bump_file, *bump_header)
         elsif file_part == :data
-          write_bump_data(bump_file, data_file, final_pixel_pad_bytes, width, pad_pixels, line_pad_bits)
+          write_bump_data(bump_file, data_file, final_pixel_pad_bytes, width, pad_pixels)
         end
       end
     end
@@ -228,12 +227,11 @@ module Stegosaurus
       end
     end
 
-    def write_bump_data(bump_file, data_file, final_pixel_pad_bytes, width, pad_pixels, line_pad_bits)
-      bits_needed = width * @colour_depth
-      if bits_needed % 8 == 0
-        write_byte_scale_bump_data(bump_file, data_file, final_pixel_pad_bytes, width, pad_pixels, line_pad_bits)
+    def write_bump_data(bump_file, data_file, final_pixel_pad_bytes, width, pad_pixels)
+      if @colour_depth % 8 == 0
+        write_byte_scale_bump_data(bump_file, data_file, width, final_pixel_pad_bytes, pad_pixels)
       else
-        write_bit_scale_bump_data(bump_file, data_file, bits_needed)
+        write_bit_scale_bump_data(bump_file, data_file, width)
       end
       bump_file.flush()
 
@@ -250,8 +248,9 @@ module Stegosaurus
       end
     end
 
-    def write_byte_scale_bump_data(bump_file, data_file, final_pixel_pad_bytes, width, pad_pixels, line_pad_bits)
-      line_pad = [].pack("x%d" % (line_pad_bits / 8))
+    def write_byte_scale_bump_data(bump_file, data_file, width, final_pixel_pad_bytes, pad_pixels)
+      line_pad_bytes = scan_line_pad_bits(width) / 8 # this won't be a lossy divide - we know we're byte scale at this point
+      line_pad = [].pack("x%d" % line_pad_bytes)
       fetch_size = width
 
       # write data
@@ -278,9 +277,10 @@ module Stegosaurus
       end
     end
 
-    def write_bit_scale_bump_data(bump_file, data_file, bits_needed)
+    def write_bit_scale_bump_data(bump_file, data_file, width)
+      bits_needed = width * @colour_depth
       fetch_size = (bits_needed / 8.0).ceil
-      line_pad_bits = 32 - (bits_needed % 32)
+      line_pad_bits = scan_line_pad_bits(width)
 
       row = []
       (data, eof) = bytes_from(data_file, fetch_size)
