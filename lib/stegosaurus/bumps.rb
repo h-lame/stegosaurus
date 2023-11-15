@@ -286,6 +286,10 @@ module Stegosaurus
       (data, eof) = bytes_from(data_file, fetch_size)
       # write data
       while not eof
+        # write a row completely from row if we already have enough in it
+        write_bit_scale_scan_line(bump_file, '', row.shift(bits_needed), bits_needed, line_pad_bits) if row.size >= bits_needed
+
+
         row = write_bit_scale_scan_line(bump_file, data, row, bits_needed, line_pad_bits)
         (data, eof) = bytes_from(data_file, fetch_size)
       end
