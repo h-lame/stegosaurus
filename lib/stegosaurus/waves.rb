@@ -75,27 +75,27 @@ module Stegosaurus
     def make_wave_header(file_name)
       file_size = File.size(file_name)
 
-      riff = "RIFF"
+      identifier = "RIFF"
       # So .. um .. pack('i') = int.  I want little-endian int and (on my computer at least)
       # 'l' (system endian long), 'N' (network-endian long) and 'i' give the same
       # so I'm assuming that 'V' (little-endian long) is ok. (Probably not for other systems)
-      riff << [36 + file_size].pack('V')
-      riff << "WAVE"
+      identifier << [36 + file_size].pack('V')
+      identifier << "WAVE"
 
-      fmt = "fmt "
+      format = "fmt "
 
       number_of_samples = number_of_samples_from(file_size)
 
       block_align = (channels_as_data * @bps) / 8
       byte_rate = @sample_rate * block_align
 
-      fmt << [16, 1, channels_as_data, @sample_rate, byte_rate, block_align, @bps].pack('Vv2V2v2')
+      format << [16, 1, channels_as_data, @sample_rate, byte_rate, block_align, @bps].pack('Vv2V2v2')
 
       data = 'data'
       # data << [file_size].pack('V')
       data << [(number_of_samples * channels_as_data * @bps) / 8].pack('V')
 
-      [riff, fmt, data]
+      [identifier, format, data]
     end
   end
 end
