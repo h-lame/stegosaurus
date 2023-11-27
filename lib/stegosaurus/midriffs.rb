@@ -137,10 +137,10 @@ module Stegosaurus
           note = bits.shift(7).join
           velocity = bits.shift(7).join
 
-          events += convert_to_variable_length_quantity(Integer("0b#{delta_time}"))
-          events << Integer("0b100#{on_or_off}#{channel}")
-          events << Integer("0b0#{note}")
-          events << Integer("0b0#{velocity}")
+          events += convert_to_variable_length_quantity(delta_time.to_i(2))
+          events << "100#{on_or_off}#{channel}".to_i(2)
+          events << "0#{note}".to_i(2)
+          events << "0#{velocity}".to_i(2)
         end
       end
 
