@@ -1,5 +1,9 @@
 # Stegosaurus
 
+> [!NOTE]
+> This repo is a toy.  You might gain some insight from reading (or watching)
+> [the talk I gave about it at the November 2023 RubyConf](http://h-lame.com/talks/re-interpreting-data/rubyconf-2023/).
+
 Dinosaurs are cool.  Secrets are cool.  Secret Dinosaurs
 would be cooler.  Alas, Jurassic Park style shenanigans
 are out of the scope of mere software, but we'll see what
